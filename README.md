@@ -23,6 +23,12 @@ Jetbot Voice to Action Tools is a set of ROS2 nodes that utilize the Jetson Auto
   - Code logic explanation:
     - Employs the Jetson voice Automatic Speech Recognition (ASR) ROS2 node and the [QuartzNet-15x5](https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/asr/models.html#quartznet) model to decode human speech into text. The decoded text is then published as ROS2 Text messages.
       - **Running the code:** Please note that this code needs to be run within a Docker container
+        - Update [run.sh](https://github.com/dusty-nv/jetson-voice/blob/master/docker/run.sh) script by adding "[sudo docker run -env](https://docs.docker.com/engine/reference/commandline/container_run/) ROS_DOMAIN_ID=0". This command sets the ROS_DOMAIN_ID environment variable to 0 for ROS2 nodes running inside a jetson_voice Docker container.
+        - cd jetson-voice
+        - $docker/run.sh --dev
+        - examples/asr.py --list-devices
+        - ros2 launch ./ros/launch/asr-ns.launch.py input_device:=11
+          - added namespace='jetbot_voice' into [asr.launch.py](https://github.com/dusty-nv/jetson-voice/blob/master/ros/launch/asr.launch.py)
     - **Receiving Jetson-voice ASR ROS2 Messages:** The Jetbot ASR Client receives the ASR ROS2 message and identifies it as either a Jetbot tool action or a chat-only topic.
     - **Handling Chat-Only Topics:** For chat-only topics, retrieves the appropriate response and publishes it as a ROS2 text message to the Jetbot TTS client for audio playback
     - **Handling Jetbot Tool Actions:** For accepted Jetbot tool actions, publishes a ROS2 Jetbot tool command text message to the Jetbot voice tools copilot ROS client, triggering robot actions.
