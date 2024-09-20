@@ -247,23 +247,6 @@ class JetbotASRagent(Node):
                         ASR_string = "jetbot process: " + ASR_string
                     else:
                         ASR_string = "jetbot node :{} not exit skip command :{}" + ASR_string
-
-                    '''
-                    value = self.node_param_util.get_node_parameters(node_name, 'command')
-                    if value.string_value != ASR_string:
-                        # Set voice command parameter to target node
-                        self.node_param_util.set_node_parameters(node_name, 'command', type=ParameterType.PARAMETER_STRING, value=ASR_string)
-                        ASR_string = "jetbot process: " + ASR_string
-                    else:
-                        # 'Echoing' in ASR occurs
-                        # when the microphone picks up the system's own text-to-speech output,
-                        # creating a recursive voice recognition loop.
-
-                        # Ignore command value alread set, 
-                        # Wait until Jetbot_tool_voice_copilot complete the command and reset the value
-                        self.get_logger().info('ASR input command alread set --> ignore:' + ASR_string)
-                        return
-                    '''
                 else:
                     # Publish to TTS node to play audio streaming and disable ASR muting
                     ASR_string = "jetbot tool copilot command: " + ASR_string
