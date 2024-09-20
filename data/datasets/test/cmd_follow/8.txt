@@ -1,0 +1,1 @@
+Robot initiate follow mode for the person in the frame.

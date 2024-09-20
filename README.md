@@ -1,97 +1,103 @@
-# Jetbot Voice to Action Tools with Jetson ASR Deep Learning Interface Library for ROS2 Robot
+# Jetbot Voice-Activated Copilot Tools with Nvidia RIVA and NanoLLM Container for ROS2 Robot - version 2.0
 
-Jetbot Voice to Action Tools is a set of ROS2 nodes that utilize the Jetson Automatic Speech Recognition (ASR) deep learning interface library for NVIDIA Jetson. Jetbot Voice to Action Tools leverages the Jetson ASR ROS2 node for detecting robot task commands, enabling chat-based greetings, Lidar-assisted self-driving with object avoidance, and real-time object detection for following a person.
+Jetbot Voice-Activated Copilot is a set of ROS2 nodes that utilize the NVIDIA RIVA Automatic Speech Recognition (ASR) deep learning interface library and the Jetson NanoLLM Docker container for NVIDIA Jetson Orin jetbot. These tools leverage NVIDIA RIVA ASR for input and use a 1D convolutional neural network (CNN) model as a text classifier to handle the prediction process for robot task commands. This enables functionalities such as chat via LLM, vision via VLM, Lidar-assisted self-driving with object avoidance, and real-time object detection for following a person.
 
-## Features
 
-- **Jetbot ASR Client**: Enables your robot to decode human voice messages using the Jetson voice ASR ROS2 node.
+### Features
+---
+- **Jetbot ASR Processor**: Enables your robot to decode human voice messages using the Nvidia RIVA ASR service client ROS2 node.
 
-- **Jetbot TTS Client**: Enables chat-based greeting text to be converted into speech and played via the robot's speaker. This feature enhances the interaction between the robot and humans, making it more engaging and user-friendly.
+- **Jetbot TTS Processor**: Converts chat-vision NLM VLM response text into speech using Nvidia RIVA TTS services, which is then played via the robot's speaker. This feature enhances the interaction between the robot and humans, making it more engaging and user-friendly.
 
-- **Voice to Action Map**: Allows you to build a map between specific voice commands and the corresponding actions that the robot should take.
+- **Jetbot ASR Agent**: Allows you to build a simple 1D convolutional neural network (CNN) model for text classification to predict human voice intentions and pipe corresponding NLM chat, VLM vision, and actions that the robot should take.
 
-- **Jetbot Voice Tools Copilot**: Executes the actions corresponding to the voice commands. It also handles tasks related to Lidar-assisted self-driving, object avoidance, and real-time object detection for person following.
-
+- **Jetbot Voice Tools Copilot**: Executes the actions corresponding to the voice commands posted via ROS2 topic from the Jetbot ASR Agent. It also handles tasks related to Lidar-assisted self-driving, object avoidance, and real-time object detection for person following.
 
 #### Here is a brief overview of the jetbot tools design diagram/architecture
-<img src="docs/JetBot_voice_tool.png" width="700" />
+<img src="docs/JetBot_ASR_voice_tool.png" width="700" />
 
+### Setup
+- [Jetbot Voice-Activated Copilot Tools Setup Guide](docs/setup.md#setup)
+<br><br>
 
-### Jetbot voice to actions tools source code and video demos:
+### Jetbot voice-activated copilot tools source code and video demos
 ---
-- **Jetbot ASR Client:**
+- **Jetbot ASR Processor:**
   - Code logic explanation:
-    - Employs the Jetson voice Automatic Speech Recognition (ASR) ROS2 node and the [QuartzNet-15x5](https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/asr/models.html#quartznet) model to decode human speech into text. The decoded text is then published as ROS2 Text messages.
+    - Employs the Nvidia RIVA Speech Recognition (ASR) service client side ROS2 node to decode human speech into text. The decoded text is then published as ROS2 Text messages.
+      - **Start Nvidia RIVA server:** [Riva Server Quick Start Guide](https://docs.nvidia.com/deeplearning/riva/user-guide/docs/quick-start-guide.html)
+         - `cd riva_quickstart_v2.16.0`
+         - `bash riva_init.sh`
+         - `bash riva_start.sh`
       - **Running the code:** Please note that this code needs to be run within a Docker container
-        - Update [run.sh](https://github.com/dusty-nv/jetson-voice/blob/master/docker/run.sh) script by adding "[sudo docker run -env](https://docs.docker.com/engine/reference/commandline/container_run/) ROS_DOMAIN_ID=0". This command sets the ROS_DOMAIN_ID environment variable to 0 for ROS2 nodes running inside a jetson_voice Docker container.
-        - cd jetson-voice
-        - $docker/run.sh --dev
-        - examples/asr.py --list-devices
-        - ros2 launch ./ros/launch/asr-ns.launch.py input_device:=11
-          - added namespace='jetbot_voice' into [asr.launch.py](https://github.com/dusty-nv/jetson-voice/blob/master/ros/launch/asr.launch.py)
-    - **Receiving Jetson-voice ASR ROS2 Messages:** The Jetbot ASR Client receives the ASR ROS2 message and identifies it as either a Jetbot tool action or a chat-only topic.
-    - **Handling Chat-Only Topics:** For chat-only topics, retrieves the appropriate response and publishes it as a ROS2 text message to the Jetbot TTS client for audio playback
-    - **Handling Jetbot Tool Actions:** For accepted Jetbot tool actions, publishes a ROS2 Jetbot tool command text message to the Jetbot voice tools copilot ROS client, triggering robot actions.
+        - `cd ros2_jetbot_voice`
+        - `. run.sh `
+        - `python3 /opt/riva/python-clients/scripts/list_audio_devices.py` 
+        - `ros2 run jetbot_riva_voice jetbot_ASR --ros-args --params-file /ros2_ws/src/param/jetbot_voice_params.yaml`
+    - **Receiving Nvidia RIVA ASR service Messages:** The Jetbot ASR Processor processes the user message and identifies it as either a Jetbot tool action or a chat-vision message.
+    - **Handling and publish Chat-Only message to LLM:** For chat-only topics, publish ROS2 topic message to the [LLM](https://huggingface.co/meta-llama/Llama-2-7b-chat-hf) ROS2 node hosted in Jetbot tools and mute the mic to prevent TTX audio playback causing an echo effect.
+    - **Handling and publish Vision message to VLM:** For vision topics, publish ROS2 topic message via the [VLM](https://huggingface.co/Efficient-Large-Model/VILA1.5-3b) ROS2 node host in Jetbot tools and mute the mic to prevent TTX audio playbak causing an echo effect.
+    - **Handling Jetbot Tool Actions:** For accepted Jetbot tool actions, publish a ROS2 Jetbot tool command text message to the Jetbot voice tools copilot ROS2 client, triggering robot actions.
   - Source code:
-    - [launch file: jetbot_ASR_TTS.launch.py](launch/jetbot_ASR_TTS.launch.py) <br>
-    - [ROS2 node: jetbot_ASR_Client.py](jetbot_voice/script/jetbot_ASR_Client.py) <br>
+    - [param file: jetbot_voice_params.yaml](jetbot_riva_voice/param/jetbot_voice_params.yaml) <br>
+    - [ROS2 node: jetbot_ASR_Processor.py](jetbot_riva_voice/jetbot_riva_voice/script/Jetbot_ASR_Processor.py) <br>
   - Usage:
-    - ros2 run jetbot_voice audio_list
+    - `python3 /opt/riva/python-clients/scripts/list_audio_devices.py`
       - Get audio/microphone device ID
-    - ros2 launch jetbot_voice jetbot_ASR_TTS.launch.py param_file:=./jetbot_voice/param/jetbot_voice_params.yaml output_device:=11
-- **Jetbot TTS Client**
+    - `ros2 run jetbot_riva_voice jetbot_ASR --ros-args --params-file /ros2_ws/src/param/jetbot_voice_params.yaml`
+- **Jetbot TTS Processor:**
   - Code logic explanation:
     - The Jetbot TTS Client is designed to convert text into audio, thereby enabling robots to communicate vocally
-    - It utilizes the Google Text-to-Speech library to generate an MP3 streaming file, which is then played through the robot’s speaker
+    - It utilizes the NVIDA RIVA TTX service, which is then played through the robot’s speaker
     - The client can convert chat-based greeting text into speech, enhancing the interaction between the robot and humans. This feature makes the robot more engaging and user-friendly
   - Source code:
-    - [launch file: jetbot_ASR_TTS.launch.py](launch/jetbot_ASR_TTS.launch.py) <br>
-    - [launch file: jetbot_TTS.launch.py](launch/jetbot_TTS.launch.py) <br>
-    - [ROS2 node: jetbot_TTS_Client.py](jetbot_voice/script/jetbot_TTS.py) <br>
+    - [param file: jetbot_voice_params.yaml](jetbot_riva_voice/param/jetbot_voice_params.yaml) <br>
+    - [ROS2 node: jetbot_TTS_Processor.py](jetbot_riva_voice/jetbot_riva_voice/script/Jetbot_TTS_Processor.py) <br>
   - Usage:
-    - ros2 run jetbot_voice audio_list
+    - `python3 /opt/riva/python-clients/scripts/list_audio_devices.py`
       - Get speaker device ID
-    - ros2 launch jetbot_voice jetbot_ASR_TTS.launch.py param_file:=./jetbot_voice/param/jetbot_voice_params.yaml output_device:=11
-    - ros2 launch jetbot_voice jetbot_TTS.launch.py param_file:=./jetbot_voice/param/jetbot_TTS_params.yaml output_device:=11
-- **Jetbot Voice Tools Copilot:**
+    - `ros2 run jetbot_riva_voice jetbot_TTS --ros-args --params-file /ros2_ws/src/param/jetbot_voice_params.yaml -p index:=11`
+- **Jetbot ASR Agent:**
   - Code logic explanation:
-    - **Voice to Action Mapping:** Upon initialization, the Jetbot Voice Tools Copilot constructs a Voice to Action map. This map establishes a comprehensive relationship between specific voice commands and the corresponding actions the robot should execute.
-    - **Action Execution:** The Jetbot Voice Tools Copilot executes the actions corresponding to the voice commands published via the Jetbot ASR Client ROS2 node
+    - **Voice to Action Mapping:** Upon initialization, the Jetbot ASR Agent lazily loads a simple pre-trained 1D convolutional neural network (CNN) model. It then uses the model's labels file to construct a Voice to Action map. This map establishes a comprehensive relationship between specific voice messages or commands and the corresponding actions the robot should execute.
+    - **CNN mode voice message predition:** The CNN model's message prediction label and score are used to find the Voice to Action map to determine whether the message is for chat, vision, or robot commands. The voice and vision messages are published via ROS2 topics to the LLM and VLM ROS2 nodes hosted in Jetbot tools.
+    - **Action Execution:** The Jetbot Voice Tools Copilot executes the actions corresponding to the voice commands published via the Jetbot ASR Client ROS2 node.
       - **Supported Action Management:** It effectively handles the starting and stopping of Jetbot tool-supported actions, encompassing functionalities such as:
         - **Self driving:** Lidar-assisted ovject avoidance self-driving
         - **Person following:** Real-time object detection for person following
         - **Navigation:** Move forward/backward, turn left/right
   - Source code:
-    - [launch file: jetbot_tools_voice.launch.py](launch/jetbot_tools_voice.launch.py) <br>
-    - [param file: jetbot_voice_params.yaml](param/jetbot_voice_params.yaml) <br>
-    - [ROS2 node: jetbot_tools_sopilot.py](jetbot_voice/script/jetbot_tools_copilot.py) <br>
+    - [param file: jetbot_voice_params.yaml](jetbot_riva_voice/param/jetbot_voice_params.yaml) <br>
+    - [ROS2 node: Jetbot_ASR_Agent.py](jetbot_riva_voice/jetbot_riva_voice/script/Jetbot_ASR_Agent.py) <br>
   - Usage:
-    - ros2 launch jetbot_voice jetbot_tools_voice.launch.py param_file:=./jetbot_voice/param/jetbot_voice_params.yaml <br>
-  [<img src="https://img.youtube.com/vi/SynIj1pxzdQ/hqdefault.jpg" width="300" height="200"
-/>](https://youtu.be/SynIj1pxzdQ)
+    - `ros2 run jetbot_riva_voice jetbot_voice_agent --ros-args --params-file /ros2_ws/src/param/jetbot_voice_params.yaml
+` <br>
+  [<img src="https://img.youtube.com/vi/SqDqO-KfWUs/hqdefault.jpg" width="300" height="200"
+/>](https://youtu.be/SqDqO-KfWUs)
   ### Requirements:
-- Jetson Nano:
-  - Ububnu 20.04: https://qengineering.eu/install-ubuntu-20.04-on-jetson-nano.html
-  - ROS2 foxy: https://docs.ros.org/en/foxy/index.html
-  - Jetson voice ASR deep learining inference library: https://github.com/dusty-nv/jetson-voice
-  - Jetson voice ASR ROS2 node: https://github.com/dusty-nv/jetson-voice/tree/master/ros
-  - Docker container: https://www.forecr.io/blogs/installation/how-to-install-and-run-docker-on-jetson-nano
-  - Jetson inference and realtime vision DNN library: https://github.com/dusty-nv/jetson-inference
-  - Jetson Inference Nodes for ROS2: https://github.com/dusty-nv/ros_deep_learning <br>
-  - Google Text-to-Speech: https://gtts.readthedocs.io/
-  - ROS2 Jetbot Rools: - https://github.com/Jen-Hung-Ho/ros2_jetbot_tools
+- Jetson Orin Nano or Jetson Orin NX:
+  - https://developer.nvidia.com/embedded/learn/get-started-jetson-agx-orin-devkit#what-youll-need
+  - ROS2 humble: https://docs.ros.org/en/humble/index.html
+  - NanoLLM Docker container: https://github.com/dusty-nv/NanoLLM
+  - NanoLLM Docker container for ROS2: https://github.com/NVIDIA-AI-IOT/ros2_nanollm
+  - ROS2 Jetbot Tools Docker container V 2.0 : - https://github.com/Jen-Hung-Ho/ros2_jetbot_tools
 - Robot:
-  - Jetson Nano Jetbot: https://www.waveshare.com/wiki/JetBot_ROS_AI_Kit
-    - https://github.com/waveshare/jetbot_pro  
+  - Jetson Orin Jetbot: http://www.yahboom.net/study/ROSMASTER-X3
+    - https://drive.google.com/drive/folders/1QuXJcrRMs8oyTrrROKMnUNvTHImcIC78
   
   ### References
-- https://qengineering.eu/install-ubuntu-20.04-on-jetson-nano.html
-- https://docs.ros.org/en/foxy/index.html
+- https://www.releases.ubuntu.com/22.04/
+- https://developer.nvidia.com/embedded/learn/get-started-jetson-agx-orin-devkit#what-youll-need
+- https://docs.ros.org/en/humble/index.html
 - https://navigation.ros.org/
 - https://github.com/Jen-Hung-Ho/ros2_jetbot_tools
-- https://github.com/dusty-nv/jetson-inference
-- https://github.com/dusty-nv/ros_deep_learning
-- https://github.com/dusty-nv/jetson-voice
-- https://github.com/dusty-nv/jetson-voice/tree/master/ros
-- https://www.forecr.io/blogs/installation/how-to-install-and-run-docker-on-jetson-nano
-- https://gtts.readthedocs.io/
+- https://github.com/dusty-nv/jetson-containers
+- https://dusty-nv.github.io/NanoLLM/
+- https://github.com/dusty-nv/NanoLLM
+- https://github.com/NVIDIA-AI-IOT/ros2_nanollm
+- https://www.jetson-ai-lab.com/tutorial_llamaspeak.html
+- https://org.ngc.nvidia.com/setup/installers/cli
+- https://docs.nvidia.com/deeplearning/riva/user-guide/docs/quick-start-guide.html
+- https://docs.nvidia.com/deeplearning/riva/user-guide/docs/tutorials/tts-basics-customize-ssml.html?highlight=speechsynthesisservice
+- https://keras.io/examples/nlp/text_classification_from_scratch/
+

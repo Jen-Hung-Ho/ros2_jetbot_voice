@@ -1,0 +1,10 @@
+packaging>=20.0
+# nvidia-riva-client
+# pyyaml>=6
+termcolor
+# pyaudio
+# wget
+# keras
+# tensorflow
+# git+https://github.com/Granulate/DockerHub-API.git
+
