@@ -1,0 +1,1 @@
+Robot initiate tracking of the person in the frame.

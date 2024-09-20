@@ -1,0 +1,1 @@
+Robot describe the camera image.

@@ -1,0 +1,43 @@
+Riva_ASR_processor:
+  ros__parameters:
+    ASR_topic: "/jetbot_voice/transcripts"
+    url: "localhost:50051"
+    streaming_chunk: 16000
+    index: 26
+    start: true
+Riva_TTS_processor:
+  ros__parameters:
+    TTS_topic: "/jetbot_TTS/transcripts"
+    chat_topic: "/chatbot/response"
+    ASR_node: "/Riva_ASR_processor"
+    streaming_chunk: 16000
+    url: "localhost:50051"
+    index: 0
+    start: true
+Jetbot_ASR_agent:
+  ros__parameters:
+    ASR_topic: "/jetbot_voice/transcripts"
+    TTS_topic: "/chatbot/response"
+    LLM_topic: "/jetbot_llm_input"
+    VISION_topic: "/llm_vision_input"
+    ASR_node: "/Riva_ASR_processor"
+    start: true
+    command_enable: false
+    command_nodes: ["/Jetbot_tool_voice_copilot"]
+    # jetbot_commands: syntax: ['ASR keyword', 'command nodes index:command keyword']
+    # jetbot_commands: example: ['away','0:self-driving']
+    jetbot_commands: >
+      [
+        ['cmd_start','0:start'], ['cmd_stop','0:stop'],
+        ['cmd_left','0:left'], ['cmd_right','0:right'], ['cmd_forward', '0:forward'], ['cmd_backward', '0:backward'],
+        ['cmd_self-driving','0:self-driving'], ['cmd_follow','0:follow']
+      ]
+    jetbot_chat: >
+      [
+        ['hello', 'This is jetbot. How can I help you'],
+        ['bye', 'Take care, talk to you later']
+      ]
+    jetbot_vision: >
+      [
+        ['cmd_vision','Describe the image content in detail']
+      ]
