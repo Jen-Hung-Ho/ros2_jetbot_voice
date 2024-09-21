@@ -5,11 +5,11 @@ Jetbot Voice-Activated Copilot is a set of ROS2 nodes that utilize the NVIDIA RI
 
 ### Features
 ---
-- **Jetbot ASR Processor**: Enables your robot to decode human voice messages using the Nvidia RIVA ASR service client ROS2 node.
+- **Jetbot ASR Processor**: Enables your robot to decode human voice messages using the [Nvidia RIVA ASR service](https://docs.nvidia.com/deeplearning/riva/user-guide/docs/asr/asr-overview.html) client ROS2 node.
 
-- **Jetbot TTS Processor**: Converts chat-vision NLM VLM response text into speech using Nvidia RIVA TTS services, which is then played via the robot's speaker. This feature enhances the interaction between the robot and humans, making it more engaging and user-friendly.
+- **Jetbot TTS Processor**: Converts chat-vision NLM VLM response text into speech using [Nvidia RIVA TTS services](https://docs.nvidia.com/deeplearning/riva/user-guide/docs/tts/tts-overview.html), which is then played via the robot's speaker. This feature enhances the interaction between the robot and humans, making it more engaging and user-friendly.
 
-- **Jetbot ASR Agent**: Allows you to build a simple 1D convolutional neural network (CNN) model for text classification to predict human voice intentions and pipe corresponding NLM chat, VLM vision, and actions that the robot should take.
+- **Jetbot ASR Agent**: Allows you to build a simple 1D convolutional neural network (CNN) model for [text classification](https://keras.io/examples/nlp/text_classification_from_scratch/) to predict human voice intentions and pipe corresponding NLM chat, VLM vision, and actions that the robot should take.
 
 - **Jetbot Voice Tools Copilot**: Executes the actions corresponding to the voice commands posted via ROS2 topic from the Jetbot ASR Agent. It also handles tasks related to Lidar-assisted self-driving, object avoidance, and real-time object detection for person following.
 
