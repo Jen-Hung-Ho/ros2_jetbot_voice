@@ -77,20 +77,23 @@ class riva_asr_processor(Node):
 
     def riva_init(self):
         self.p = pyaudio.PyAudio()
-        default_device_info = riva.client.audio_io.get_default_input_device_info()
-        self.get_logger().debug("Rivai default info:{}".format(default_device_info))
-        # default_index = None if default_device_info is None else default_device_info['index']
-        if default_device_info is not None and int(default_device_info['maxInputChannels']) > 0:
-            self.audio_index = default_device_info['index']
-            self.get_logger().info("use default - ignore user input")
-        else:
-            self.audio_index = self.index
+        # comment out RIVA default device info, it doesnot work when the device id is not 0
+        # default_device_info = riva.client.audio_io.get_default_input_device_info()
+        # self.get_logger().debug("Rivai default info:{}".format(default_device_info))
+        # # default_index = None if default_device_info is None else default_device_info['index']
+        # if default_device_info is not None and int(default_device_info['maxInputChannels']) > 0:
+        #     self.audio_index = default_device_info['index']
+        #     self.get_logger().info("use default - ignore user input")
+        # else:
+        #     self.audio_index = self.index
+        self.audio_index = self.index
         default_device = self.p.get_device_info_by_index(self.audio_index)
-        self.sample_rate = int(default_device_info['defaultSampleRate'])
+        #self.sample_rate = int(default_device_info['defaultSampleRate'])
+        self.sample_rate = int(default_device['defaultSampleRate'])
 
         self.get_logger().info("==============================================")
         self.get_logger().info("Audio default index     : {}".format(self.audio_index))
-        self.get_logger().info("Max input ouput channels: [{} - {}]".format(default_device['maxInputChannels'], default_device_info['maxOutputChannels']))
+        self.get_logger().info("Max input ouput channels: [{}]".format(default_device['maxInputChannels']))
         self.get_logger().info("sample rate             : {}".format(self.sample_rate))
         # riva.client.audio_io.list_input_devices()
         self.get_logger().info("==============================================")
@@ -140,7 +143,7 @@ class riva_asr_processor(Node):
         boosted_words = ["jetbot", "action"]
         boosted_score = 4.0
         riva.client.add_word_boosting_to_config(config, boosted_words, boosted_score)
-        
+
         if hasattr(riva.client, 'add_endpoint_parameters_to_config'):
             riva.client.add_endpoint_parameters_to_config(
                 config,
@@ -154,36 +157,42 @@ class riva_asr_processor(Node):
         else:
             self.get_logger().info("The function add_endpoint_parameters_to_config() does not exist in this version of RIVA client API.")
 
-        with riva.client.audio_io.MicrophoneStream(
-            self.sample_rate,
-            self.streaming_chunk,
-            device=self.audio_index,
-        ) as audio_chunk_iterator:
-            responses=asr_service.streaming_response_generator(
-                    audio_chunks=audio_chunk_iterator,
-                    streaming_config=config
-            )
+        try:
+            with riva.client.audio_io.MicrophoneStream(
+                self.sample_rate,
+                self.streaming_chunk,
+                device=self.audio_index,
+            ) as audio_chunk_iterator:
+                responses=asr_service.streaming_response_generator(
+                        audio_chunks=audio_chunk_iterator,
+                        streaming_config=config
+                )
 
-            for response in responses:
-                if not response.results:
-                    continue
-                for result in response.results:
-                    if not result.alternatives:
+                for response in responses:
+                    if not response.results:
                         continue
-                    transcript = result.alternatives[0].transcript
-                    if result.is_final:
-                        self.get_logger().info('ASR buffer: [ {} ]'.format(transcript))
-                        self.get_logger().debug('ASR RAW:{}'.format(result.alternatives))
-                        for i, alternative in enumerate(result.alternatives):
-                            asr_msg = (f'(alternative {i + 1})' if i > 0 else '') + f' {alternative.transcript}'
-                            self.get_logger().info( '## {}'.format(asr_msg))
+                    for result in response.results:
+                        if not result.alternatives:
+                            continue
+                        transcript = result.alternatives[0].transcript
+                        if result.is_final:
+                            self.get_logger().info('ASR buffer: [ {} ]'.format(transcript))
+                            self.get_logger().debug('ASR RAW:{}'.format(result.alternatives))
+                            for i, alternative in enumerate(result.alternatives):
+                                asr_msg = (f'(alternative {i + 1})' if i > 0 else '') + f' {alternative.transcript}'
+                                self.get_logger().info( '## {}'.format(asr_msg))
 
-                        if (self.start):
-                            self.msg.data = transcript
-                            self.get_logger().info('Publishing: "%s"' % self.msg.data)
-                            self.publisher.publish(self.msg)
-                        else:
-                            self.get_logger().info('ASR -off- ignore: {}'.format(transcript))
+                            if (self.start):
+                                self.msg.data = transcript
+                                self.get_logger().info('Publishing: "%s"' % self.msg.data)
+                                self.publisher.publish(self.msg)
+                            else:
+                                self.get_logger().info('ASR -off- ignore: {}'.format(transcript))
+        except Exception as e:
+            self.get_logger().error('An error occured in ASR processor: {}'.format(e))
+            self.get_logger().info('==============================')
+            self.get_logger().info("Shutting down RIVA ASR processor node.")
+
 
         self.get_logger().info('==============================')
         self.get_logger().info('Jetbot ASR processor -- EXIT')

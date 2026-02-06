@@ -32,6 +32,7 @@ import re
 import shutil
 import string
 import tensorflow as tf
+from tensorflow import keras
 from tensorflow.keras import layers, losses
 import json
 
@@ -41,7 +42,7 @@ class TextClassification:
         self.batch_size = 32
         self.seed = 42
         self.max_features = 20000
-        self.sequence_length = 550
+        self.sequence_length = 50  # Reduced for short texts
         self.embedding_dim = 100
         self.epochs = 100
         self.vectorize_layer = None
@@ -123,31 +124,29 @@ class TextClassification:
     #
     def build_model(self):
         # This initializes a sequential model, which is a linear stack of layers.
-        self.model = tf.keras.Sequential([
-            # It’s used for text data where each word is represented by an integer.
-            # Turns positive integers (indexes) into dense vectors of fixed size.
-            layers.Embedding(self.max_features, self.embedding_dim),
-            # This layer randomly sets 50% of the input units to 0 at each update during training time, which helps prevent overfitting.
-            layers.Dropout(0.5),
-            # This is a 1D convolutional layer with 128 filters, a kernel size of 7, “valid” padding (no padding), ReLU activation function, and a stride of 3.
-            # It helps in extracting features from the input sequence.
-            layers.Conv1D(128, 7, padding="valid", activation="relu", strides=3),  # Change kernel size to 7 and strides to 3
-            layers.Conv1D(128, 7, padding="valid", activation="relu", strides=3),  # Change kernel size to 7 and strides to 3
-            # This layer performs global max pooling operation for temporal data. 
-            # It reduces the dimensionality of the input by taking the maximum value over the time dimension.
-            layers.GlobalMaxPooling1D(),
-            # This is a fully connected (dense) layer with 128 units and ReLU activation function. 
-            # It helps in learning complex representations.
-            layers.Dense(128, activation="relu"),
-            layers.Dropout(0.5),  # Increase dropout rate to 0.5
-            # This is the output layer with a number of units equal to the number of classes. 
-            # The softmax activation function is used to output a probability distribution over the classes.
-            layers.Dense(len(self.class_labels), activation='softmax')
+
+        vocab_size = self.vectorize_layer.vocabulary_size()  # Use actual vocabulary size
+
+        # Sequential model definition with Conv1D for better text classification
+        self.model = keras.Sequential([
+            keras.layers.Embedding(input_dim=vocab_size, output_dim=128),
+            keras.layers.Dropout(0.2),
+            keras.layers.Conv1D(128, 7, padding="valid", activation="relu", strides=3),
+            keras.layers.Conv1D(128, 7, padding="valid", activation="relu", strides=3),
+            keras.layers.GlobalMaxPooling1D(),
+            keras.layers.Dense(128, activation="relu"),
+            keras.layers.Dropout(0.2),
+            keras.layers.Dense(len(self.class_labels), activation="softmax")  # match your dataset labels
         ])
 
-        self.model.compile(loss=losses.SparseCategoricalCrossentropy(from_logits=False),
-                        optimizer='adam',
-                        metrics=['accuracy'])
+        # Compile the model
+        self.model.compile(
+            optimizer="adam",
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
+            metrics=["accuracy"]
+        )
+
+        return self.model
 
 
     #
@@ -163,32 +162,44 @@ class TextClassification:
     #
     # Save the trained  model
     #
-    def save_export_model(self, lable_file, model_file_name, raw_test_ds):
+    def save_export_model(self, label_file, model_file_name, raw_test_ds=None):
+
+
+        # Build export model: raw text → vectorize → classifier
         export_model = tf.keras.Sequential([
             self.vectorize_layer,
             self.model
         ])
 
-        # Reinitialize the optimizer
+        # Compile only if you want to evaluate
         export_model.compile(
-            loss=losses.SparseCategoricalCrossentropy(from_logits=False),
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
             optimizer="adam",
             metrics=['accuracy']
         )
 
-        results = export_model.evaluate(raw_test_ds)
-        print(results)
-        loss, accuracy = results[:2]
-        print(accuracy)
+        # Optional evaluation
+        if raw_test_ds is not None:
+            results = export_model.evaluate(raw_test_ds)
+            print("Evaluation results:", results)
+            loss = results[0]
+            accuracy = results[1]
+            print(f"Test loss: {loss:.4f}, Test accuracy: {accuracy:.4f}")
 
-        export_model.class_labels = self.class_labels
+
+        # Save model (choose format)
         # Save the model with the appropriate file extension
         # Save the model with the .kears extension
         model_file_name = model_file_name + '.keras'
         export_model.save(model_file_name)
+        # Or: export_model.save(model_file_name + ".keras") if you want Keras v3 format
 
-        with open(lable_file, 'w') as f:
+        # Save labels separately
+        with open(label_file, "w") as f:
             json.dump(self.class_labels, f)
+
+        print(f"Model saved to {model_file_name}")
+        print(f"Labels saved to {label_file}")
 
 
 def main():

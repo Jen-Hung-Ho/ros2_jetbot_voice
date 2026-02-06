@@ -17,13 +17,16 @@ Riva_TTS_processor:
 Jetbot_ASR_agent:
   ros__parameters:
     ASR_topic: "/jetbot_voice/transcripts"
-    TTS_topic: "/chatbot/response"
+    chat_topic: "/chatbot/response"
+    TTS_topic: "/jetbot_TTS/transcripts"
     LLM_topic: "/jetbot_llm_input"
     VISION_topic: "/llm_vision_input"
     ASR_node: "/Riva_ASR_processor"
+    predict_threshold: 0.85
     start: true
     command_enable: false
-    command_nodes: ["/Jetbot_tool_voice_copilot"]
+    command_nodes: ["/Jetbot_tool_voice_copilot","/llm_text_chat", "/llm_vision_description"]
+    command_enum: ["0:voice","1:chat", "2:vision"]
     # jetbot_commands: syntax: ['ASR keyword', 'command nodes index:command keyword']
     # jetbot_commands: example: ['away','0:self-driving']
     jetbot_commands: >

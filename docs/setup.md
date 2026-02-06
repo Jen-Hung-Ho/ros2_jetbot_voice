@@ -29,7 +29,7 @@
    ./build.sh
    ```
    
-7. **Start Docker and Build the CNN Model**:
+6. **Start Docker and Build the CNN Model**:
    Execute the following commands to run and build the CNN model `(this only needs to be done once)` The model data will be saved under `/data/models/ASR_classify_model` for the voice-activated tool to load and extract in the ROS2 node launch:
    ```bash
    . run.sh
@@ -38,14 +38,16 @@
    python3 robot_command_text_classification.py  # build CNN model
    python3 robot_command_model_evaluation.py     # run unit test
    ```
+   > **Note:** <br>
+   > If the unit test (python3 robot_command_model_evaluation.py) fails, simply rerun python3 robot_command_text_classification.py to rebuild the CNN model. TensorFlow/Keras uses random weight initialization and shuffles the training data on every run, so each training attempt produces a slightly different model. Rebuilding the model once or twice usually resolves the issue and allows the unit test to pass.
 
-8. **Start Docker:**
+7. **Start Docker:**
    Execute the following commands to run the docker
    ```bash
    . run.sh
    ```
     
-9. **Attach to an Existing Running Docker Container**:
+8. **Attach to an Existing Running Docker Container**:
    To attach to an existing running Docker container, use the following commands:
    ```bash
    docker ps

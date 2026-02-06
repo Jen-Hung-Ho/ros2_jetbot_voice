@@ -49,14 +49,16 @@ class JetbotASRagent(Node):
 
         self.start = self.declare_parameter('start', True).get_parameter_value().bool_value
         self.ASR_topic = self.declare_parameter('ASR_topic', '/jetbot_voice/transcripts').get_parameter_value().string_value
-        self.TTS_topic = self.declare_parameter('TTS_topic', '/chatbot/response').get_parameter_value().string_value
+        self.chat_topic = self.declare_parameter('chat_topic', "/chatbot/response").get_parameter_value().string_value
+        self.TTS_topic = self.declare_parameter('TTS_topic', '/jetbot_TTS/transcripts').get_parameter_value().string_value
         self.LLM_topic = self.declare_parameter('LLM_topic', '/jetbot_llm_input').get_parameter_value().string_value
         self.LLM_vision_topic = self.declare_parameter('VISION_topic', '/llm_vision_input').get_parameter_value().string_value
         self.ASR_node = self.declare_parameter('ASR_node', '/Riva_ASR_processor').get_parameter_value().string_value
-        self.command_nodes = self.declare_parameter('command_nodes', ["/Jetbot_Param_Client"]).get_parameter_value().string_array_value
+        self.command_nodes = self.declare_parameter('command_nodes', ["/Jetbot_tool_voice_copilot"]).get_parameter_value().string_array_value
+        self.node_enum = self.declare_parameter('command_enum', ["0:voice"]).get_parameter_value().string_array_value
         self.lable_path = self.declare_parameter('label_path', '/data/models/class_labels.json').get_parameter_value().string_value
         self.model_path = self.declare_parameter('model_path', '/data/models/ASR_classify_model').get_parameter_value().string_value
-        self.predict_threshold = self.declare_parameter('predict_threshold', 0.7).get_parameter_value().double_value
+        self.predict_threshold = self.declare_parameter('predict_threshold', 0.85).get_parameter_value().double_value
         self.command_enable = self.declare_parameter('command_enable', False).get_parameter_value().bool_value
         # Get the parameter as a string (2 dimentional string array)
         self.jetbot_commands = self.declare_parameter('jetbot_commands', "[['start', '0:start'], ['stop', '0:stop']]").get_parameter_value().string_value
@@ -76,6 +78,15 @@ class JetbotASRagent(Node):
         self.vision_two_dim_array = ast.literal_eval(self.jetbot_vision)
         self.vision_dict_array = {row[0]: row[1] for row in self.vision_two_dim_array}
 
+        # build command enum dict
+        self.node_enum_dict = {}
+        for item in self.node_enum:
+            parts = item.split(':')
+            if len(parts) == 2:
+                index = int(parts[0])
+                name = parts[1]
+                self.node_enum_dict[name] = index
+
         # Collect command and chat keywords
         self.keywords = []
         command_values =  [row[0] for row in self.cmd_two_dim_array]       
@@ -86,10 +97,13 @@ class JetbotASRagent(Node):
         self.get_logger().info('start            : {}'.format(self.start))
         self.get_logger().info('ASR_topic        : {}'.format(self.ASR_topic))
         self.get_logger().info('TTS_topic        : {}'.format(self.TTS_topic))
+        self.get_logger().info('chat_topic       : {}'.format(self.chat_topic))
         self.get_logger().info('LLM_topic        : {}'.format(self.LLM_topic))
         self.get_logger().info('LLM VISION_topic : {}'.format(self.LLM_vision_topic))
         self.get_logger().info('ASR_node         : {}'.format(self.ASR_node))
         self.get_logger().info('command_nodes    : {}'.format(self.command_nodes))
+        self.get_logger().info('command_enum     : {}'.format(self.node_enum))
+        self.get_logger().info('note_enum_dict   : {}'.format(self.node_enum_dict))
         self.get_logger().info('jetbot_keywords  : {}'.format(self.keywords))
         self.get_logger().info('predict threshold: {}'.format(self.predict_threshold))
         self.get_logger().info('command enable   : {}'.format(self.command_enable))
@@ -112,6 +126,13 @@ class JetbotASRagent(Node):
             self.ASR_callback,
             10)
         
+        self.pub_chat = self.create_publisher(
+            String,
+            self.chat_topic,
+            10
+        )
+
+
         self.pub_TTS = self.create_publisher(
             String,
             self.TTS_topic,
@@ -204,6 +225,7 @@ class JetbotASRagent(Node):
                 # ASR_string = self.chat_dict_array[keyword]
                 self.get_logger().info("ASR input: {} chat: {}".format(keyword,ASR_string))
                 vision_chat = True
+                node_name = self.command_nodes[self.node_enum_dict['vision']]
             elif keyword in self.cmd_dict_array:
                 command = True
                 self.get_logger().info('jetbot command tool enable: {}'.format(command))
@@ -237,46 +259,91 @@ class JetbotASRagent(Node):
         with self.lock:
             # Jetbot chat acton no need to set command to target node
             if command == True:
+                jetbot_copilot = False
                 # 'Echoing' in ASR occurs
                 # when the microphone picks up the system's own text-to-speech output,
                 # creating a recursive voice recognition loop.
                 self.mute_ASR_processor(self.ASR_node)
                 if self.command_enable:
-                    passfail = self.node_param_util.try_set_node_parameters(node_name, 'command', type=ParameterType.PARAMETER_STRING, value=ASR_string)
-                    if passfail == True:
+                    jetbot_copilot = self.node_param_util.try_set_node_parameters(node_name, 'command', type=ParameterType.PARAMETER_STRING, value=ASR_string)
+                    if jetbot_copilot == True:
                         ASR_string = "jetbot process: " + ASR_string
                     else:
-                        ASR_string = "jetbot node :{} not exit skip command :{}" + ASR_string
+                        ASR_string = "jetbot node :{} not exit skip command :{}".format(node_name, ASR_string)
+
+                    '''
+                    value = self.node_param_util.get_node_parameters(node_name, 'command')
+                    if value.string_value != ASR_string:
+                        # Set voice command parameter to target node
+                        self.node_param_util.set_node_parameters(node_name, 'command', type=ParameterType.PARAMETER_STRING, value=ASR_string)
+                        ASR_string = "jetbot process: " + ASR_string
+                    else:
+                        # 'Echoing' in ASR occurs
+                        # when the microphone picks up the system's own text-to-speech output,
+                        # creating a recursive voice recognition loop.
+
+                        # Ignore command value alread set, 
+                        # Wait until Jetbot_tool_voice_copilot complete the command and reset the value
+                        self.get_logger().info('ASR input command alread set --> ignore:' + ASR_string)
+                        return
+                    '''
                 else:
                     # Publish to TTS node to play audio streaming and disable ASR muting
                     ASR_string = "jetbot tool copilot command: " + ASR_string
+                
+                self.get_logger().info('publish to ' + ASR_string)
                 TTS_string = String()
                 TTS_string.data = ASR_string
-                self.pub_TTS.publish(TTS_string)
+                if jetbot_copilot == False:
+                    # If jetbot tool copilot node not exist, just response via TTS
+                    self.pub_chat.publish(TTS_string)
+                else:
+                    # self.pub_TTS.publish(TTS_string)
+                    self.get_logger().info("Node:[{}] will publish command:[{}] to TTS processor".format(node_name, ASR_string))
+                
             elif greeting == True:
                 self.mute_ASR_processor(self.ASR_node)
                 TTS_string = String()
                 TTS_string.data = ASR_string
-                self.pub_TTS.publish(TTS_string)
+                self.pub_chat.publish(TTS_string)
             elif vision_chat == True:
                 self.mute_ASR_processor(self.ASR_node)
-                # Publish to LLM vidion node to response as chatbot
-                LLM_vision_string = String()
-                # Use ASR raw input data as LLM input
-                LLM_vision_string.data = msg.data
-                self.pub_LLM_vision.publish(LLM_vision_string)
+                node_exist = self.check_node_exists(node_name)
+                if not node_exist:
+                    ASR_string = "Node:{} does not exist skip llm vision chat bot".format(node_name)
+                    self.get_logger().info(ASR_string)
+                    TTS_string = String()
+                    TTS_string.data = ASR_string
+                    self.pub_chat.publish(TTS_string)
+                else:
+                    self.mute_ASR_processor(self.ASR_node)
+                    # Publish to LLM vidion node to response as chatbot
+                    LLM_vision_string = String()
+                    # Use ASR raw input data as LLM input
+                    LLM_vision_string.data = msg.data
+                    self.pub_LLM_vision.publish(LLM_vision_string)
             elif chat == True:
                 self.mute_ASR_processor(self.ASR_node)
                 # Publish to LLM node to response as chatbot
-                LLM_string = String()
-                # Use ASR raw input data as LLM input
-                LLM_string.data = msg.data
-                self.pub_LLM.publish(LLM_string)
+                node_name = self.command_nodes[self.node_enum_dict['chat']]
+                node_exist = self.check_node_exists(node_name)
+                if not node_exist:
+                    ASR_string = "Node:{} does not exist skip llm chat bot".format(node_name)
+                    self.get_logger().info(ASR_string)
+                    TTS_string = String()
+                    TTS_string.data = ASR_string
+                    self.pub_chat.publish(TTS_string)
+                else:
+                    LLM_string = String()
+                    # Use ASR raw input data as LLM input
+                    LLM_string.data = msg.data
+                    self.pub_LLM.publish(LLM_string)
 
     #
     # Mute ASR processor and wait until LLM chat reponse to TTS task complete
     #
     def mute_ASR_processor(self, node_name):
+        self.get_logger().info('Mute ASR processor node:{}'.format(node_name))
         # Turn off ASR and wait until LLM chat response to TTS task complete
         self.set_jetbot_node_bool_parameters(node_name, 'start', False)
 
@@ -285,6 +352,7 @@ class JetbotASRagent(Node):
     #
     def enable_jetbot_tool_copilot(self, node_name):
         # Trun on Jerbot voice 
+        self.get_logger().info('Enable Jetbot tool copilot node:{}'.format(node_name))
         self.set_jetbot_node_bool_parameters(node_name, 'start', True)
 
     #

@@ -68,13 +68,21 @@ class TextClassifier:
     # This function handles the prediction process for the text classifier model
     # 1D convolutional neural network (CNN) model
     #
-    def predict(self, min_score, input_text):
+    def predict(self, threshold, input_text):
         prediction = self.model.predict(tf.constant([input_text]))
-        predicted_class_index = tf.argmax(prediction, axis=1).numpy()[0]
-        most_fit_score = prediction[0][predicted_class_index]
+        probs = prediction[0]  # probability vector
+        predicted_class_index = tf.argmax(probs).numpy()
+        most_fit_score = probs[predicted_class_index]
         predicted_class_label = self.class_labels[predicted_class_index]
 
-        if most_fit_score < min_score:
-            return "other", False, most_fit_score
-        else:
+        # Sort probabilities descending
+        sorted_probs = tf.sort(probs, direction='DESCENDING').numpy()
+        margin = sorted_probs[0] - sorted_probs[1]  # difference between top and second
+
+        # Determine if the prediction meets the confidence threshold
+        if most_fit_score >= threshold:
             return predicted_class_label, True, most_fit_score
+        else:
+            print(f"DEBUG: [other] input_text: '{input_text}' Threshold: {threshold:.4f}")
+            print(f"DEBUG: Low confidence prediction - Predicted: '{predicted_class_label}', Score: {most_fit_score:.4f}, Margin: {margin:.4f}")
+            return "other", False, most_fit_score
