@@ -92,25 +92,27 @@ class riva_tts_processor(Node):
 
     def riva_init(self):
         self.p = pyaudio.PyAudio()
-        default_device_info = riva.client.audio_io.get_default_input_device_info()
-        self.get_logger().debug("Rivai default info:{}".format(default_device_info))
-        # default_index = None if default_device_info is None else default_device_info['index']
-        if default_device_info is not None and int(default_device_info['maxOutputChannels']) > 0:
-            self.audio_index = default_device_info['index']
-            self.get_logger().info("use default - ignore user input")
-        else:
-            self.audio_index = self.index
+        # comment out RIVA default device info, it doesnot work when the device id is not 0
+        # default_device_info = riva.client.audio_io.get_default_input_device_info()
+        # self.get_logger().debug("Rivai default info:{}".format(default_device_info))
+        # # default_index = None if default_device_info is None else default_device_info['index']
+        # if default_device_info is not None and int(default_device_info['maxOutputChannels']) > 0:
+        #     self.audio_index = default_device_info['index']
+        #     self.get_logger().info("use default - ignore user input")
+        # else:
+        #     self.audio_index = self.index
+        self.audio_index = self.index
         default_device = self.p.get_device_info_by_index(self.audio_index)
         self.sample_rate = int(default_device['defaultSampleRate'])
 
         self.get_logger().info("==============================================")
         self.get_logger().info("Audio default index     : {}".format(self.audio_index))
-        self.get_logger().info("Max input ouput channels: [{} - {}]".format(default_device['maxInputChannels'], default_device_info['maxOutputChannels']))
+        self.get_logger().info("Max output channels: [{}]".format(default_device['maxOutputChannels']))
         self.get_logger().info("sample rate             : {}".format(self.sample_rate))
         # riva.client.audio_io.list_input_devices()
         self.get_logger().info("==============================================")
 
-         # Initialize RIVA
+        # Initialize RIVA
         # auth = riva.client.Auth(args.ssl_cert, args.use_ssl, args.server, args.metadata)
         auth = riva.client.Auth(None, False, self.RIVA_URL, None)
         self.tts_service = riva.client.SpeechSynthesisService(auth)
@@ -118,6 +120,18 @@ class riva_tts_processor(Node):
         self.get_logger().info("==============================================")
         self.get_logger().info(" RIVA speech synthesis service")
         self.get_logger().info("==============================================")
+
+        try:
+            config_response = self.tts_service.stub.GetRivaSynthesisConfig(
+                riva.client.proto.riva_tts_pb2.RivaSynthesisConfigRequest()
+            )
+            self.get_logger().info("RIVA TTS service is up and running.")
+        except Exception as e:
+            self.get_logger().error(f"RIVA TTS service unavailable: {e}")
+            self.get_logger().info('==============================')
+            self.get_logger().info("Shutting down RIVA TTS processor node.")
+            # rclpy.shutdown()  # Shut down the node
+            return  # Optional, to exit riva_init early
 
     def list_audio_devices(self):
         self.get_logger().info("==============================================")
@@ -158,8 +172,13 @@ class riva_tts_processor(Node):
 
                 self.get_logger().info(" Generating audio for request.. \n msg:{}".format(msg_str))
                 responses = self.tts_service.synthesize_online(
-                    msg_str, None, "en-US", sample_rate_hz=self.sample_rate,
-                    audio_prompt_file=None, quality=20
+                    text=msg_str,
+                    voice_name=None,  # Let server pick default, as in CLI
+                    language_code="en-US",
+                    sample_rate_hz=self.sample_rate,  # Match CLI sample rate
+                    audio_prompt_file=None,
+                    quality=20,
+                    custom_dictionary={}
                 )
 
                 first = True

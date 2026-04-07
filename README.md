@@ -1,4 +1,4 @@
-# Jetbot Voice-Activated Copilot Tools with Nvidia RIVA and NanoLLM Container for ROS2 Robot - version 2.0
+# Jetbot Voice-Activated Copilot Tools with Nvidia RIVA and NanoLLM Container for ROS2 Robot - version 2.1
 
 Jetbot Voice-Activated Copilot is a set of ROS2 nodes that utilize the NVIDIA RIVA Automatic Speech Recognition (ASR) deep learning interface library and the Jetson NanoLLM Docker container for NVIDIA Jetson Orin jetbot. These tools leverage NVIDIA RIVA ASR for input and use a 1D convolutional neural network (CNN) model as a text classifier to handle the prediction process for robot task commands. This enables functionalities such as chat via LLM, vision via VLM, Lidar-assisted self-driving with object avoidance, and real-time object detection for following a person.
 
@@ -14,7 +14,7 @@ Jetbot Voice-Activated Copilot is a set of ROS2 nodes that utilize the NVIDIA RI
 - **Jetbot Voice Tools Copilot**: Executes the actions corresponding to the voice commands posted via ROS2 topic from the Jetbot ASR Agent. It also handles tasks related to Lidar-assisted self-driving, object avoidance, and real-time object detection for person following.
 
 #### Here is a brief overview of the jetbot tools design diagram/architecture
-<img src="docs/JetBot_ASR_voice_tool.png" width="700" />
+<img src="docs/JetBot_ASR_voice_tool_V21.png" width="700" />
 
 ### Setup
 - [Jetbot Voice-Activated Copilot Tools Setup Guide](docs/setup.md#setup)
@@ -89,7 +89,7 @@ Jetbot Voice-Activated Copilot is a set of ROS2 nodes that utilize the NVIDIA RI
 - https://www.releases.ubuntu.com/22.04/
 - https://developer.nvidia.com/embedded/learn/get-started-jetson-agx-orin-devkit#what-youll-need
 - https://docs.ros.org/en/humble/index.html
-- https://navigation.ros.org/
+- https://docs.nav2.org/index.html
 - https://github.com/Jen-Hung-Ho/ros2_jetbot_tools
 - https://github.com/dusty-nv/jetson-containers
 - https://dusty-nv.github.io/NanoLLM/

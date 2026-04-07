@@ -41,6 +41,7 @@ class TestTextClassifier(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.threshold = 0.9  # Margin threshold: keep at 0.9 to ensure "other" inputs are classified correctly
         model_path = '../data/models/ASR_classify_model'
         labels_path = '../data/models/class_labels.json'
         cls.classifier = TextClassifier(model_path, labels_path)
@@ -77,14 +78,15 @@ class TestTextClassifier(unittest.TestCase):
 
     def test_predictions(self):
         pass_count = 0
+
         for i, example in enumerate(self.examples):
-            label, result, score = self.classifier.predict(0.7, example)
+            label, result, score = self.classifier.predict(self.threshold, example)
             expected_label = self.expected_results[i]
             if label == expected_label:
                 pass_count += 1
                 # print(f"PASS: Input: '{example}' => Predicted Label: '{label}', Expected Label: '{expected_label}', Result: '{score}'")
                 print(colored(f"PASS: Input: '{example}' => Predicted Label: '{label}', Expected Label: '{expected_label}', Result: '{score}'", 'green'))
-                if score < 0.7 and label == 'other':
+                if score < self.threshold and label == 'other': 
                     # print(f"PASS: chat topic: '{example}' => Predicted Label: '{label}', Expected Label: '{expected_label}', Result: '{score}'")
                     print(colored(f"PASS: chat topic: '{example}' => Predicted Label: '{label}', Expected Label: '{expected_label}', Result: '{score}'", 'magenta'))
 
@@ -98,42 +100,42 @@ class TestTextClassifier(unittest.TestCase):
         print("===================================================")
 
 
-def simple_test():
+    def simple_test(self):
 
-    # Define data mode file loacation
-    model_path = '../data/models/ASR_classify_model'
-    labels_path = '../data/models/class_labels.json'
-    classifier = TextClassifier(model_path, labels_path)
+        # Define data mode file loacation
+        model_path = '../data/models/ASR_classify_model'
+        labels_path = '../data/models/class_labels.json'
+        classifier = TextClassifier(model_path, labels_path)
 
 
-    # Sample test cases
-    examples = [
-        "turn to right.",
-        "turn to left.",
-        "What do you see in camera?",
-        "follow me.",
-        "go forward.",
-        "move backward.",
-        "stop all actions",
-        "start the action",
-        "Start self driving mode",
-        "Describe what do you see in image?",
-        "How many states in the United States?"
-    ]
+        # Sample test cases
+        examples = [
+            "turn to right.",
+            "turn to left.",
+            "What do you see in camera?",
+            "follow me.",
+            "go forward.",
+            "move backward.",
+            "stop all actions",
+            "start the action",
+            "Start self driving mode",
+            "Describe what do you see in image?",
+            "How many states in the United States?"
+        ]
 
-    print("============================================================")
-    print(classifier.class_labels)
-    print("============================================================")
+        print("============================================================")
+        print(classifier.class_labels)
+        print("============================================================")
 
-    # Run predictions for each example
-    for example in examples:
-    
-        label, result, score = classifier.predict(0.7, example)
-        if result:
-            print(f"Input: '{example}' => Predicted Label: '{label}', Result: '{score}'")
-        else:
-            print("Chat topic: -----------------------")
-            print(f"Input: '{example}' => Predicted Label: '{label}', Result: '{score}'")
+        # Run predictions for each example
+        for example in examples:
+        
+            label, result, score = classifier.predict(self.threshold, example)
+            if result:
+                print(f"Input: '{example}' => Predicted Label: '{label}', Result: '{score}'")
+            else:
+                print("Chat topic: -----------------------")
+                print(f"Input: '{example}' => Predicted Label: '{label}', Result: '{score}'")
 
 
 if __name__ == "__main__":
